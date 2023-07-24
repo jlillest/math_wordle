@@ -21,6 +21,12 @@ class TestWordleGuess(unittest.TestCase):
             "+1234567",
             # starts with zero
             "0123=567",
+            # expressions with multiple zeros
+            "11-11=00",
+            "11/01=11",
+            "01*11=11",
+            "11+01=11",
+            "1+2*4=01",
             # does not end with number
             "1123456+",
             # contains no operations

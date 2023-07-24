@@ -1,4 +1,5 @@
 import argparse
+import re
 from itertools import product
 
 NUMBERS = "1234567890"
@@ -34,8 +35,10 @@ class WordleGuess:
             raise WordleFormatError(f"Equation contains too many equal signs: {self.guess}")
         if self.guess[0] not in NUMBERS:
             raise WordleFormatError(f"Equation must start with a number: {self.guess}")
-        if self.guess[0] == "0":
-            raise WordleFormatError(f"Equation cannot start with a zero: {self.guess}")
+        numbers = re.split("[\=\-\*\+\/]", self.guess)
+        for number in numbers:
+            if len(number) > 1 and number[0] == "0":
+                raise WordleFormatError(f"Number cannot start with a zero: {self.guess}")
         if self.guess[-1] not in NUMBERS:
             raise WordleFormatError(f"Equation must end with a number: {self.guess}")
         if not [c for c in self.guess if c in OPERATIONS]:
