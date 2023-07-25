@@ -38,7 +38,7 @@ class WordleGuess:
             raise WordleFormatError(f"Equation must start with a number: {self.guess}")
         if self.guess[0] == "0":
             raise WordleFormatError(f"Equation cannot start with a zero: {self.guess}")
-        numbers = re.split("[\=\-\*\+\/]", self.guess)
+        numbers = re.split(r"[=\-*+/]", self.guess)
         for number in numbers:
             if len(number) > 1 and number[0] == "0":
                 raise WordleFormatError(f"Number cannot start with a zero: {self.guess}")
@@ -88,7 +88,7 @@ class MathWordle:
 
     def find_exclusions(self):
         """ extract elements within square braces and add them to the exclusions dict """
-        pattern = "\[.*?\]|."
+        pattern = r"\[.*?\]|."
         splits = re.findall(pattern, self.guess_format)
 
         for i, split in enumerate(splits):
