@@ -20,23 +20,27 @@ The equation must conform to the wordle rules, or you'll either see an error
 or return zero results.
 
 ```python
-python wordle.py --equation=73-6_=1_
+python wordle.py --math=73-6_=1_
 ```
 
 You can also provide the whitelist and blacklist arguments to narrow down the guesses.
 
 ```python
-python wordle.py --equation=5+_+7=1_ --whitelist=3 --blacklist=24689-
+python wordle.py --math=5+_+7=1_ --whitelist=3 --blacklist=24689-
 ```
 
-## The Good, the Bad, and the Ugly
+Or, to further narrow down guesses, you can put a list of values that are excluded 
+from a column by putting the field in square brackets instead of an underscore.
 
-**The Good** This tool is simple to run, will run most everywhere and will help you solve wordle puzzles.
+```python
+python wordle.py --math=[13]+[3]+7=1_ --whitelist=3 --blacklist=24689-
+```
 
-**The Bad** This tool has no gui, no webapp and will probably never see more 
-complete features like whitelist characters by position.
+## Testing
 
-**The Ugly** Finding solutions in this tool is not optimized, and therefore may take a really
-long time to run on slower systems, especially if you haven't narrowed down the solution much. 
-It also uses eval.  Sure, the input to eval is sanitized, but I'm sure there's a better way 
-to solve equations, like the python solver library, but it works for this. 
+Tests have been written, mostly to help with development of the tool.  They can be
+run by executing the following command:
+
+```python
+python tests.py
+```

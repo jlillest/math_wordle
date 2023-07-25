@@ -18,8 +18,9 @@ class WordleMathError(Exception):
 
 class WordleGuess:
     def __init__(self, guess):
-        if len(guess) != 8:
-            raise WordleFormatError(f"bad guess format: len={len(guess)} guess={guess}")
+        if not guess or len(guess) != 8:
+            length = len(guess) if guess else None
+            raise WordleFormatError(f"bad guess format: len={length} guess={guess}")
         self.guess = guess
         self.process()
 
@@ -35,6 +36,8 @@ class WordleGuess:
             raise WordleFormatError(f"Equation contains too many equal signs: {self.guess}")
         if self.guess[0] not in NUMBERS:
             raise WordleFormatError(f"Equation must start with a number: {self.guess}")
+        if self.guess[0] == "0":
+            raise WordleFormatError(f"Equation cannot start with a zero: {self.guess}")
         numbers = re.split("[\=\-\*\+\/]", self.guess)
         for number in numbers:
             if len(number) > 1 and number[0] == "0":
@@ -59,7 +62,6 @@ class WordleGuess:
             if eval(left) != eval(right):
                 raise WordleMathError(f"Equation is not equal: {self.guess}")
         except SyntaxError as e:
-            # Be careful here, it's likely a leading zero error, but there may be other reasons
             raise WordleMathError(f"Syntax error on eval: guess={self.guess} {e}")
         except ZeroDivisionError:
             raise WordleMathError(f"Bad equation, divide by zero: {self.guess}")
@@ -76,38 +78,64 @@ class MathWordle:
         self.guesses = []
         self.blacklist = blacklist if blacklist else []
         self.whitelist = whitelist if whitelist else []
+        self.exclusions = {}
 
-        self.update_guesses()
+        self.find_exclusions()
 
-    def update_guesses(self):
-        if self.WILDCARD not in self.guess_format:
-            try:
-                self.guesses = [WordleGuess(self.guess_format)]
-            except (WordleFormatError, WordleMathError):
-                pass
-            return
+        if len(self.guess_format) != 8:
+            raise WordleFormatError(f"Wordle guess does not have 8 characters: {self.guess_format}")
+        self.generate_guesses()
 
+    def find_exclusions(self):
+        """ extract elements within square braces and add them to the exclusions dict """
+        pattern = "\[.*?\]|."
+        splits = re.findall(pattern, self.guess_format)
+
+        for i, split in enumerate(splits):
+            if "[" in split:
+                self.exclusions[i] = split.replace("[", "").replace("]", "")
+                splits[i] = self.WILDCARD
+
+        self.guess_format = "".join(splits)
+
+    def generate_guesses(self):
         wildcards = [i for i, c in enumerate(self.guess_format) if c == "_"]
 
-        options = self.get_options(len(wildcards))
+        if not wildcards:
+            self.add_guess(self.guess_format)
+            return
 
-        for option in options:
-            new_guess = [c for c in self.guess_format]
-            for new_character, wildcard in enumerate(wildcards):
-                new_guess[wildcard] = list(option)[new_character]
+        for option_fields in self.get_options(len(wildcards)):
+            self.add_guess(self.get_new_guess(wildcards, option_fields))
 
-            try:
-                for c in self.whitelist:
-                    if c not in new_guess:
-                        raise WordleFormatError
-                guess = WordleGuess("".join(new_guess))
-                self.guesses.append(guess)
-            except (WordleMathError, WordleFormatError):
-                pass
+    def get_new_guess(self, wildcards, option_fields):
+        guess = [c for c in self.guess_format]
+
+        # check that whitelisted values are represented in option fields
+        if [c for c in self.whitelist if c not in option_fields]:
+            return
+
+        for new_character, wildcard in enumerate(wildcards):
+            value = option_fields[new_character]
+
+            # make sure that this isn't one of our excluded values
+            excluded_values = self.exclusions.get(wildcard)
+            if self.exclusions.get(wildcard) and value in excluded_values:
+                return
+            guess[wildcard] = value
+
+        # return as string, not a list of characters
+        return "".join(guess)
+
+    def add_guess(self, guess):
+        try:
+            self.guesses.append(WordleGuess(guess))
+        except (WordleFormatError, WordleMathError):
+            pass
 
     def get_options(self, length):
         characters = [c for c in VALID_CHARACTERS if c not in self.blacklist]
-        return product(characters, repeat=length)
+        return list(product(characters, repeat=length))
 
     def get_guesses(self):
         return [guess.guess for guess in self.guesses]
@@ -115,23 +143,23 @@ class MathWordle:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Solve Math Wordle")
-    parser.add_argument("--equation", type=str,
+    parser.add_argument("-m", "--math", type=str,
                         help="The equation guesses so far, use _ for empty spots")
-    parser.add_argument("--blacklist", type=str,
+    parser.add_argument("-b", "--blacklist", type=str,
                         help="The tiles that are grayed out and cannot exist in the solution")
-    parser.add_argument("--whitelist", type=str,
+    parser.add_argument("-w", "--whitelist", type=str,
                         help="The tiles that are yellow and must exist in the solution")
     args = parser.parse_args()
 
-    if args.equation and len(args.equation) != 8:
-        print("Equation must be provided with 8 characters")
+    if args.math and len(args.math) < 8:
+        print("Equation must be provided with at least 8 characters")
         exit(0)
 
-    if not args.equation or all([c == "_" for c in args.equation]):
+    if not args.math or all([c == "_" for c in args.math]):
         print("All blanks provided, try a solution like \"12+46=58\" to get some guesses on the board")
         exit(0)
 
-    wordle = MathWordle(args.equation, blacklist=args.blacklist, whitelist=args.whitelist)
+    wordle = MathWordle(args.math, blacklist=args.blacklist, whitelist=args.whitelist)
 
     for solution_number, solution in enumerate(wordle.get_guesses()):
         print(f"{solution_number:3d}: {solution}")

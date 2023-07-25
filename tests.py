@@ -56,16 +56,86 @@ class TestWordleGuess(unittest.TestCase):
 
 
 class TestMathWordle(unittest.TestCase):
-    def test_wordle_guesses(self):
-        guesses = [
-            ("73-6_=1_", "5", "1", "73-61=12"),
-            ("_*_3=1__", "5689", "24", "4*33=132"),
-            ("_+___=1_", "24689-", "35", "5+3+7=15"),
-        ]
+    def assert_wordle_solution(self, guess, blacklist, whitelist, solution):
+        mw = MathWordle(guess, blacklist, whitelist)
+        self.assertIn(solution, mw.get_guesses())
 
-        for guess, blacklist, whitelist, solution in guesses:
-            mw = MathWordle(guess, blacklist, whitelist)
-            self.assertIn(solution, mw.get_guesses())
+    def test_wordle_guess1(self):
+        guess = "73-6_=1_"
+        blacklist = "5"
+        whitelist = "1"
+        solution = "73-61=12"
+        self.assert_wordle_solution(guess, blacklist, whitelist, solution)
+
+    def test_wordle_guess2(self):
+        guess = "_*_3=1__"
+        blacklist = "5689"
+        whitelist = "24"
+        solution = "4*33=132"
+        self.assert_wordle_solution(guess, blacklist, whitelist, solution)
+
+    def test_wordle_guess3(self):
+        guess = "_+___=1_"
+        blacklist = "24689-"
+        whitelist = "35"
+        solution = "5+3+7=15"
+        self.assert_wordle_solution(guess, blacklist, whitelist, solution)
+
+    def test_exlusions1(self):
+        guess = "[1]_+_1=34"
+        exclusions = {0: "1"}
+        bad_answer = "13+21=34"
+        good_answer = "23+11=34"
+
+        mw = MathWordle(guess)
+        self.assertEqual(mw.exclusions, exclusions)
+        guesses = mw.get_guesses()
+        self.assertIn(good_answer, guesses)
+        self.assertNotIn(bad_answer, guesses)
+
+    def test_exlusions2(self):
+        guess = "__+[2]1=34"
+        exclusions = {3: "2"}
+        bad_answer = "13+21=34"
+        good_answer = "23+11=34"
+
+        mw = MathWordle(guess)
+        self.assertEqual(mw.exclusions, exclusions)
+        guesses = mw.get_guesses()
+        self.assertIn(good_answer, guesses)
+        self.assertNotIn(bad_answer, guesses)
+
+    def test_exlusions3(self):
+        guess = "2[23]/[7][=][=]_0"
+        exclusions = {1: "23", 3: "7", 4: "=", 5: "="}
+        blacklist = "14568+"
+        whitelist = "7"
+        good_answer = "27/3-9=0"
+
+        mw = MathWordle(guess, blacklist, whitelist)
+        self.assertEqual(mw.exclusions, exclusions)
+        guesses = mw.get_guesses()
+        self.assertTrue(guesses)
+        self.assertIn(good_answer, guesses)
+
+    def test_exclusions_give_refined_results(self):
+        guess_with = "2*8[26]=17[8]"
+        guess_without = "2*8_=17_"
+        blacklist = "345"
+        whitelist = "6"
+        good_answer = "2*88=176"
+
+        mw_with = MathWordle(guess_with, blacklist, whitelist)
+        self.assertTrue(mw_with.exclusions)
+        guesses_with = mw_with.get_guesses()
+        self.assertIn(good_answer, guesses_with)
+
+        mw_without = MathWordle(guess_without, blacklist, whitelist)
+        self.assertFalse(mw_without.exclusions)
+        guesses_without = mw_without.get_guesses()
+        self.assertIn(good_answer, guesses_without)
+
+        self.assertGreater(len(guesses_without), len(guesses_with))
 
 
 if __name__ == '__main__':
